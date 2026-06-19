@@ -58,6 +58,8 @@ pip install -r requirements.txt
 python main.py
 ```
 
+The app will auto-install missing dependencies if you run it without `pip install` first (requires an active internet connection).
+
 ### Build from Source
 
 ```bash

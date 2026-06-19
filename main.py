@@ -13,8 +13,47 @@ from datetime import datetime
 from collections import defaultdict, OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from tkinter import filedialog, messagebox, TclError
+_FROZEN = getattr(sys, "frozen", False)
+
+def _bootstrap_imports():
+    missing = []
+    for mod, pip_name in [
+        ("customtkinter", "customtkinter"),
+        ("fitz", "PyMuPDF"),
+        ("pypdf", "pypdf"),
+        ("PIL", "Pillow"),
+        ("pandas", "pandas"),
+        ("pdf2docx", "pdf2docx"),
+    ]:
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(pip_name)
+
+    if not missing:
+        return
+
+    if _FROZEN:
+        sys.exit(f"[FATAL] Bundled dependencies missing: {', '.join(missing)}")
+
+    # Running from source — auto-install
+    req_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+    print(f"[BOOT] Missing: {', '.join(missing)}. Installing...")
+    code = subprocess.call([sys.executable, "-m", "pip", "install", "-r", req_file],
+                           shell=(os.name == "nt"))
+    if code != 0:
+        sys.exit(f"[FATAL] pip install failed. Run: pip install -r {req_file}")
+
+    # Retry after install
+    for mod in ["customtkinter", "fitz", "pypdf", "PIL", "pandas", "pdf2docx"]:
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            sys.exit(f"[FATAL] Could not import {mod} after install.")
+
+_bootstrap_imports()
+
 import customtkinter as ctk
-# Core document/media imports (used by OmniCoreEngine methods)
 import fitz
 from pypdf import PdfMerger, PdfReader, PdfWriter
 from PIL import Image
